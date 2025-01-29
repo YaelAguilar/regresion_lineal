@@ -6,7 +6,7 @@ from tkinter import filedialog, messagebox
 import threading
 import random
 
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from tkinter import ttk
 
 class LinearRegressionGA:
@@ -140,11 +140,13 @@ class Application:
         frame_params = LabelFrame(self.master, text="Parámetros", padx=10, pady=10)
         frame_params.pack(padx=10, pady=5, fill="x")
 
+        # Entrada para Tasa de Aprendizaje
         Label(frame_params, text="Tasa de Aprendizaje:").grid(row=0, column=0, sticky=E)
         self.entry_learning_rate = Entry(frame_params)
         self.entry_learning_rate.insert(0, "0.01")  # Valor predeterminado reducido
         self.entry_learning_rate.grid(row=0, column=1, padx=5, pady=2)
 
+        # Entrada para Generaciones
         Label(frame_params, text="Generaciones:").grid(row=1, column=0, sticky=E)
         self.entry_generations = Entry(frame_params)
         self.entry_generations.insert(0, "500")  # Valor predeterminado
@@ -181,24 +183,61 @@ class Application:
         self.tabs.add(self.tab_fitness, text="Evolución del Fitness")
         self.tabs.add(self.tab_betas, text="Evolución de Betas")
 
-        # Figuras
+        # Figuras y Barras de Herramientas
+
+        # Predicción vs Real
         self.fig_pred_real = plt.Figure(figsize=(6,5), dpi=100)
         self.ax_pred_real = self.fig_pred_real.add_subplot(111)
         self.canvas_pred_real = FigureCanvasTkAgg(self.fig_pred_real, master=self.tab_pred_real)
         self.canvas_pred_real.draw()
-        self.canvas_pred_real.get_tk_widget().pack(fill="both", expand=True)
 
+        # Frame para Predicción vs Real (Canvas + Toolbar)
+        frame_pred_real = Frame(self.tab_pred_real)
+        frame_pred_real.pack(fill="both", expand=True)
+
+        # Barra de herramientas para Predicción vs Real
+        self.toolbar_pred_real = NavigationToolbar2Tk(self.canvas_pred_real, frame_pred_real)
+        self.toolbar_pred_real.update()
+        self.toolbar_pred_real.pack(side=TOP, fill="x")
+
+        # Canvas para Predicción vs Real
+        self.canvas_pred_real.get_tk_widget().pack(side=TOP, fill="both", expand=True)
+
+        # Evolución del Fitness
         self.fig_fitness = plt.Figure(figsize=(6,5), dpi=100)
         self.ax_fitness = self.fig_fitness.add_subplot(111)
         self.canvas_fitness = FigureCanvasTkAgg(self.fig_fitness, master=self.tab_fitness)
         self.canvas_fitness.draw()
-        self.canvas_fitness.get_tk_widget().pack(fill="both", expand=True)
 
+        # Frame para Evolución del Fitness (Canvas + Toolbar)
+        frame_fitness = Frame(self.tab_fitness)
+        frame_fitness.pack(fill="both", expand=True)
+
+        # Barra de herramientas para Evolución del Fitness
+        self.toolbar_fitness = NavigationToolbar2Tk(self.canvas_fitness, frame_fitness)
+        self.toolbar_fitness.update()
+        self.toolbar_fitness.pack(side=TOP, fill="x")
+
+        # Canvas para Evolución del Fitness
+        self.canvas_fitness.get_tk_widget().pack(side=TOP, fill="both", expand=True)
+
+        # Evolución de Betas
         self.fig_betas = plt.Figure(figsize=(6,5), dpi=100)
         self.ax_betas = self.fig_betas.add_subplot(111)
         self.canvas_betas = FigureCanvasTkAgg(self.fig_betas, master=self.tab_betas)
         self.canvas_betas.draw()
-        self.canvas_betas.get_tk_widget().pack(fill="both", expand=True)
+
+        # Frame para Evolución de Betas (Canvas + Toolbar)
+        frame_betas = Frame(self.tab_betas)
+        frame_betas.pack(fill="both", expand=True)
+
+        # Barra de herramientas para Evolución de Betas
+        self.toolbar_betas = NavigationToolbar2Tk(self.canvas_betas, frame_betas)
+        self.toolbar_betas.update()
+        self.toolbar_betas.pack(side=TOP, fill="x")
+
+        # Canvas para Evolución de Betas
+        self.canvas_betas.get_tk_widget().pack(side=TOP, fill="both", expand=True)
 
     def load_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
@@ -266,21 +305,29 @@ class Application:
             messagebox.showerror("Error", "La tasa de aprendizaje debe ser un número positivo.")
             return
 
+        try:
+            generations = int(self.entry_generations.get())
+            if generations <= 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "El número de generaciones debe ser un número positivo.")
+            return
+
         # Deshabilitar el botón mientras se ejecuta
         self.btn_run.config(state=DISABLED)
         self.txt_results.delete(1.0, END)
         self.txt_results.insert(END, "Ejecutando el ajuste de regresión...\n")
 
         # Ejecutar en un hilo separado para no congelar la GUI
-        threading.Thread(target=self.execute_ga, args=(learning_rate,)).start()
+        threading.Thread(target=self.execute_ga, args=(learning_rate, generations)).start()
 
-    def execute_ga(self, learning_rate):
+    def execute_ga(self, learning_rate, generations):
         try:
             self.ga = LinearRegressionGA(
                 X=self.X,
                 Y=self.Y,
                 learning_rate=learning_rate,
-                generations=self.generations,
+                generations=generations,
                 crossover_prob=0.8,
                 mutation_prob=0.1,
                 elitism_rate=0.1
